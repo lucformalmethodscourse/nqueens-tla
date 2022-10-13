@@ -57,7 +57,7 @@ nxtQ:  while todo # {}
               exts = { Append(queens,c) : c \in cols }
          do
            if (nxtQ = N)
-           then todo := todo \ {queens}; sols := sols \union exts; print exts;
+           then todo := todo \ {queens}; sols := sols \union exts;
            else todo := (todo \ {queens}) \union exts;
            end if;
          end with;
@@ -85,7 +85,6 @@ nxtQ == /\ pc = "nxtQ"
                               IF (nxtQ = N)
                                  THEN /\ todo' = todo \ {queens}
                                       /\ sols' = (sols \union exts)
-                                      /\ PrintT(exts)
                                  ELSE /\ todo' = ((todo \ {queens}) \union exts)
                                       /\ sols' = sols
                    /\ pc' = "nxtQ"
