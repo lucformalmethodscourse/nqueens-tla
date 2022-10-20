@@ -77,7 +77,7 @@ Init == (* Global variables *)
         /\ pc = "nxtQ"
 
 nxtQ == /\ pc = "nxtQ"
-        /\ IF todo # { }
+        /\ IF todo # {}
               THEN /\ LET queens == CHOOSE q \in todo : TRUE IN
                         LET nxtQ == Len(queens) + 1 IN
                           LET cols == { c \in 1..N : ~ \E i \in 1 .. Len(queens) :
