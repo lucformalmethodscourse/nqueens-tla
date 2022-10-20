@@ -2,8 +2,7 @@
 EXTENDS QueensPluscal, TLC
 
 \* CONSTANT definitions @modelParameterConstants:0N
-const_129269506133433000 == 
-4
+const_N == 4
 ----
 
 \* SPECIFICATION definition @modelBehaviorSpec:0

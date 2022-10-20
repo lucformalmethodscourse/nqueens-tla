@@ -1,5 +1,5 @@
 -------------------------- MODULE QueensPluscal -----------------------------
-EXTENDS Naturals, Sequences
+EXTENDS Naturals, Sequences, TLC
 (***************************************************************************)
 (* Formulation of the N-queens problem and an iterative algorithm to solve *)
 (* the problem in TLA+. Since there must be exactly one queen in every row *)
@@ -50,7 +50,7 @@ Solutions == { queens \in [1..N -> 1..N] : IsSolution(queens) }
      begin
 nxtQ:  while todo # {}
        do
-         with queens \in todo,
+         with queens = CHOOSE q \in todo : TRUE,
               nxtQ = Len(queens) + 1,
               cols = { c \in 1..N : ~ \E i \in 1 .. Len(queens) :
                                       Attacks( Append(queens, c), i, nxtQ ) },
@@ -62,6 +62,7 @@ nxtQ:  while todo # {}
            end if;
          end with;
        end while;
+       print sols;
      end algorithm
 *)
 
@@ -76,8 +77,8 @@ Init == (* Global variables *)
         /\ pc = "nxtQ"
 
 nxtQ == /\ pc = "nxtQ"
-        /\ IF todo # {}
-              THEN /\ \E queens \in todo:
+        /\ IF todo # { }
+              THEN /\ LET queens == CHOOSE q \in todo : TRUE IN
                         LET nxtQ == Len(queens) + 1 IN
                           LET cols == { c \in 1..N : ~ \E i \in 1 .. Len(queens) :
                                                        Attacks( Append(queens, c), i, nxtQ ) } IN
@@ -88,7 +89,8 @@ nxtQ == /\ pc = "nxtQ"
                                  ELSE /\ todo' = ((todo \ {queens}) \union exts)
                                       /\ sols' = sols
                    /\ pc' = "nxtQ"
-              ELSE /\ pc' = "Done"
+              ELSE /\ PrintT(sols)
+                   /\ pc' = "Done"
                    /\ UNCHANGED << todo, sols >>
 
 (* Allow infinite stuttering to prevent deadlock on termination. *)
