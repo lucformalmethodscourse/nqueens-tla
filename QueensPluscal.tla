@@ -14,22 +14,6 @@ EXTENDS Naturals, Sequences, TLC
 CONSTANT N              \** number of queens and size of the board
 ASSUME N \in Nat \ {0}
 
-(* The following predicate determines if queens i and j attack each other
-   in a placement of queens (represented by a sequence as above). *)
-Attacks(queens,i,j) ==
-  \/ queens[i] = queens[j]                 \** same column
-  \/ queens[i] - queens[j] = i - j         \** first diagonal
-  \/ queens[j] - queens[i] = i - j         \** second diagonal
-
-(* A placement represents a (partial) solution if no two different queens
-   attack each other in it. *)
-IsSolution(queens) ==
-  \A i \in 1 .. Len(queens)-1 : \A j \in i+1 .. Len(queens) : 
-       ~ Attacks(queens,i,j) 
-
-(* Compute the set of solutions of the N-queens problem. *)
-Solutions == { queens \in [1..N -> 1..N] : IsSolution(queens) }
-
 (***************************************************************************)
 (* We now describe an algorithm that iteratively computes the set of       *)
 (* solutions of the N-queens problem by successively placing queens.       *)
@@ -42,15 +26,50 @@ Solutions == { queens \in [1..N -> 1..N] : IsSolution(queens) }
 (* to the set todo.                                                        *)
 (***************************************************************************)
 
-(* --algorithm Queens
+(* --fair algorithm Queens
      variables
        todo = { << >> };
        sols = {};
 
+     define
+        
+        (* The following predicate determines if queens i and j attack each other
+        in a placement of queens (represented by a sequence as above). *)
+        Attacks(queens,i,j) ==
+        \/ queens[i] = queens[j]                 \** same column
+        \/ queens[i] - queens[j] = i - j         \** first diagonal
+        \/ queens[j] - queens[i] = i - j         \** second diagonal
+
+        (* A placement represents a (partial) solution if no two different queens
+        attack each other in it. *)
+        IsSolution(queens) ==
+        \A i \in 1 .. Len(queens)-1 : \A j \in i+1 .. Len(queens) : 
+            ~ Attacks(queens,i,j) 
+
+        (* Compute the set of solutions of the N-queens problem. *)
+        Solutions == { queens \in [1..N -> 1..N] : IsSolution(queens) }
+
+        TypeInvariant ==
+        /\ todo \in SUBSET Seq(1 .. N) /\ \A s \in todo : Len(s) < N
+        /\ sols \in SUBSET Seq(1 .. N) /\ \A s \in sols : Len(s) = N
+
+        (* The set of sols contains only solutions, and contains all solutions
+        when todo is empty. *)
+        Invariant ==
+        /\ sols \subseteq Solutions
+        /\ todo = {} => Solutions \subseteq sols
+
+        (* Assert that no solutions are ever computed so that TLC displays one *)
+        NoSolutions == sols = {}
+
+     end define;
+
      begin
-nxtQ:  while todo # {}
+       while todo # {}
        do
-         with queens = CHOOSE q \in todo : TRUE,
+         with 
+              \* queens \in todo,
+              queens = CHOOSE q \in todo : TRUE,
               nxtQ = Len(queens) + 1,
               cols = { c \in 1..N : ~ \E i \in 1 .. Len(queens) :
                                       Attacks( Append(queens, c), i, nxtQ ) },
@@ -62,65 +81,80 @@ nxtQ:  while todo # {}
            end if;
          end with;
        end while;
-       print sols;
+       assert NoSolutions;
+\*       print sols;
      end algorithm
 *)
 
 \** BEGIN TRANSLATION
 VARIABLES todo, sols, pc
 
+(* define statement *)
+Attacks(queens,i,j) ==
+\/ queens[i] = queens[j]
+\/ queens[i] - queens[j] = i - j
+\/ queens[j] - queens[i] = i - j
+
+
+
+IsSolution(queens) ==
+\A i \in 1 .. Len(queens)-1 : \A j \in i+1 .. Len(queens) :
+    ~ Attacks(queens,i,j)
+
+
+Solutions == { queens \in [1..N -> 1..N] : IsSolution(queens) }
+
+TypeInvariant ==
+/\ todo \in SUBSET Seq(1 .. N) /\ \A s \in todo : Len(s) < N
+/\ sols \in SUBSET Seq(1 .. N) /\ \A s \in sols : Len(s) = N
+
+
+
+Invariant ==
+/\ sols \subseteq Solutions
+/\ todo = {} => Solutions \subseteq sols
+
+
+NoSolutions == sols = {}
+
+
 vars == << todo, sols, pc >>
 
 Init == (* Global variables *)
         /\ todo = { << >> }
         /\ sols = {}
-        /\ pc = "nxtQ"
+        /\ pc = "Lbl_1"
 
-nxtQ == /\ pc = "nxtQ"
-        /\ IF todo # {}
-              THEN /\ LET queens == CHOOSE q \in todo : TRUE IN
-                        LET nxtQ == Len(queens) + 1 IN
-                          LET cols == { c \in 1..N : ~ \E i \in 1 .. Len(queens) :
-                                                       Attacks( Append(queens, c), i, nxtQ ) } IN
-                            LET exts == { Append(queens,c) : c \in cols } IN
-                              IF (nxtQ = N)
-                                 THEN /\ todo' = todo \ {queens}
-                                      /\ sols' = (sols \union exts)
-                                 ELSE /\ todo' = ((todo \ {queens}) \union exts)
-                                      /\ sols' = sols
-                   /\ pc' = "nxtQ"
-              ELSE /\ PrintT(sols)
-                   /\ pc' = "Done"
-                   /\ UNCHANGED << todo, sols >>
+Lbl_1 == /\ pc = "Lbl_1"
+         /\ IF todo # {}
+               THEN /\ LET queens == CHOOSE q \in todo : TRUE IN
+                         LET nxtQ == Len(queens) + 1 IN
+                           LET cols == { c \in 1..N : ~ \E i \in 1 .. Len(queens) :
+                                                        Attacks( Append(queens, c), i, nxtQ ) } IN
+                             LET exts == { Append(queens,c) : c \in cols } IN
+                               IF (nxtQ = N)
+                                  THEN /\ todo' = todo \ {queens}
+                                       /\ sols' = (sols \union exts)
+                                  ELSE /\ todo' = ((todo \ {queens}) \union exts)
+                                       /\ sols' = sols
+                    /\ pc' = "Lbl_1"
+               ELSE /\ Assert(NoSolutions, 
+                              "Failure of assertion at line 84, column 8.")
+                    /\ pc' = "Done"
+                    /\ UNCHANGED << todo, sols >>
 
 (* Allow infinite stuttering to prevent deadlock on termination. *)
 Terminating == pc = "Done" /\ UNCHANGED vars
 
-Next == nxtQ
+Next == Lbl_1
            \/ Terminating
 
-Spec == Init /\ [][Next]_vars
+Spec == /\ Init /\ [][Next]_vars
+        /\ WF_vars(Next)
 
 Termination == <>(pc = "Done")
 
 \** END TRANSLATION
-
-TypeInvariant ==
-  /\ todo \in SUBSET Seq(1 .. N) /\ \A s \in todo : Len(s) < N
-  /\ sols \in SUBSET Seq(1 .. N) /\ \A s \in sols : Len(s) = N
-
-(* The set of sols contains only solutions, and contains all solutions
-   when todo is empty. *)
-Invariant ==
-  /\ sols \subseteq Solutions
-  /\ todo = {} => Solutions \subseteq sols
-
-(* Assert that no solutions are ever computed so that TLC displays one *)
-NoSolutions == sols = {}
-
-(* Add a fairness condition to ensure progress as long as todo is nonempty *)
-Liveness == WF_vars(nxtQ)
-LiveSpec == Spec /\ Liveness
 
 =============================================================================
 \* Modification History
